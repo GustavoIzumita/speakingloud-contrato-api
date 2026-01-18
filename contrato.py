@@ -3,7 +3,7 @@ from flask_cors import CORS
 from docx import Document
 from docx.shared import Pt
 from datetime import date
-import uuid
+import unicodedata
 import os
 import traceback
 
@@ -16,6 +16,7 @@ def pegar(dados, chave):
 @app.route("/gerar-contrato", methods=["POST", "OPTIONS"])
 def gerar_contrato():
 
+    # Preflight CORS
     if request.method == "OPTIONS":
         response = make_response()
         response.headers["Access-Control-Allow-Origin"] = "*"
@@ -26,7 +27,7 @@ def gerar_contrato():
     try:
         dados = request.json or {}
 
-        # DATA AUTOMÁTICA
+        # ===== DATA AUTOMÁTICA =====
         hoje = date.today()
         meses = {
             1: "janeiro", 2: "fevereiro", 3: "março",
@@ -36,6 +37,7 @@ def gerar_contrato():
         }
         data_formatada = f"{hoje.day} de {meses[hoje.month]} de {hoje.year}"
 
+        # ===== ABRE O MODELO =====
         doc = Document("contrato_modelo.docx")
 
         campos = {
@@ -55,7 +57,7 @@ def gerar_contrato():
             "{{DATA}}": data_formatada
         }
 
-        # PARÁGRAFOS
+        # ===== SUBSTITUI PARÁGRAFOS =====
         for paragrafo in doc.paragraphs:
             for run in paragrafo.runs:
                 for campo, valor in campos.items():
@@ -64,7 +66,7 @@ def gerar_contrato():
                 run.font.name = "Times New Roman"
                 run.font.size = Pt(12)
 
-        # TABELAS
+        # ===== SUBSTITUI TABELAS =====
         for tabela in doc.tables:
             for linha in tabela.rows:
                 for celula in linha.cells:
@@ -75,19 +77,22 @@ def gerar_contrato():
                                     run.text = run.text.replace(campo, valor)
                             run.font.name = "Times New Roman"
                             run.font.size = Pt(12)
-                            import unicodedata  # coloque no topo do arquivo, junto com os imports
-                            nome = pegar(dados, "nome")
-                            
-                            # remove acentos (João -> Joao
-                            nome_sem_acento = unicodedata.normalize("NFKD", nome).encode("ASCII", "ignore").decode("ASCII")
-                            
-                            # remove espaços extra
-                            nome_base = nome_sem_acento.strip().replace(" ", "_")
-                            
-                            arquivo_docx = f"Contrato-{nome_base}.docx"
-                            
-                            doc.save(arquivo_docx)
 
+        # ===== NOME DO ARQUIVO =====
+        nome = pegar(dados, "nome")
+
+        nome_sem_acento = unicodedata.normalize(
+            "NFKD", nome
+        ).encode("ASCII", "ignore").decode("ASCII")
+
+        nome_base = nome_sem_acento.strip().replace(" ", "_")
+
+        arquivo_docx = f"Contrato-{nome_base}.docx"
+
+        # ===== SALVA =====
+        doc.save(arquivo_docx)
+
+        # ===== ENVIA PARA DOWNLOAD =====
         response = send_file(
             arquivo_docx,
             as_attachment=True,
@@ -99,6 +104,7 @@ def gerar_contrato():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
