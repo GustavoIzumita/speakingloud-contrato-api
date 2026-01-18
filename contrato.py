@@ -88,7 +88,11 @@ def gerar_contrato():
                             
                             doc.save(arquivo_docx)
 
-        response = send_file(arquivo_docx, as_attachment=True)
+        response = send_file(
+            arquivo_docx,
+            as_attachment=True,
+            download_name=arquivo_docx
+        )
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
 
