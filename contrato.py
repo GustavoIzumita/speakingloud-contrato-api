@@ -75,12 +75,18 @@ def gerar_contrato():
                                     run.text = run.text.replace(campo, valor)
                             run.font.name = "Times New Roman"
                             run.font.size = Pt(12)
-
-        nome_base = pegar(dados, "nome").replace(" ", "_")
-        identificador = uuid.uuid4().hex[:8]
-        arquivo_docx = f"contrato_{nome_base}_{identificador}.docx"
-
-        doc.save(arquivo_docx)
+                            import unicodedata  # coloque no topo do arquivo, junto com os imports
+                            nome = pegar(dados, "nome")
+                            
+                            # remove acentos (João -> Joao
+                            nome_sem_acento = unicodedata.normalize("NFKD", nome).encode("ASCII", "ignore").decode("ASCII")
+                            
+                            # remove espaços extra
+                            nome_base = nome_sem_acento.strip().replace(" ", "_")
+                            
+                            arquivo_docx = f"Contrato-{nome_base}.docx"
+                            
+                            doc.save(arquivo_docx)
 
         response = send_file(arquivo_docx, as_attachment=True)
         response.headers["Access-Control-Allow-Origin"] = "*"
@@ -93,13 +99,3 @@ def gerar_contrato():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
-
-
-
-
-
-
-
-
